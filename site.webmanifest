@@ -1,16 +1,22 @@
 {
-  "name": "OTC International Logistics",
+  "name": "OTC Integrated Logistics Solutions",
   "short_name": "OTC Logistics",
   "description": "Importación y exportación internacional de carga masiva en contenedores.",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#050b1a",
-  "theme_color": "#050b1a",
+  "background_color": "#0F1C30",
+  "theme_color": "#0F1C30",
   "icons": [
     {
       "src": "assets/img/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
+    },
+    {
+      "src": "assets/img/logo-fondo-azul.jpeg",
+      "sizes": "1080x1080",
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ]
 }

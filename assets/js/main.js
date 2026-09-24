@@ -1,5 +1,5 @@
 /* =========================================================
-   OTC International Logistics — main.js
+   OTC Integrated Logistics Solutions — main.js
    Vanilla JS, no dependencies. Respects prefers-reduced-motion.
    ========================================================= */
 (function () {
@@ -233,7 +233,7 @@
 
     function draw() {
       ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = "rgba(120,170,255,0.18)";
+      ctx.strokeStyle = "rgba(184,145,90,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(w / 2, h / 2, r, 0, Math.PI * 2);
@@ -243,7 +243,7 @@
         var proj = project(p.lat, p.lon, rotation);
         if (proj.z < -0.15) return;
         ctx.beginPath();
-        ctx.fillStyle = "rgba(0,229,255," + (0.25 + proj.scale * 0.45) + ")";
+        ctx.fillStyle = "rgba(184,145,90," + (0.25 + proj.scale * 0.45) + ")";
         ctx.arc(proj.x, proj.y, 1.1 + proj.scale * 1.2, 0, Math.PI * 2);
         ctx.fill();
       });
@@ -258,13 +258,13 @@
         var p2 = project(lat + lift, lon, rotation);
         if (p1.z < -0.2 || p2.z < -0.2) return;
         ctx.beginPath();
-        ctx.strokeStyle = "rgba(0,229,255,0.55)";
+        ctx.strokeStyle = "rgba(184,145,90,0.55)";
         ctx.lineWidth = 1.4;
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
         ctx.stroke();
         ctx.beginPath();
-        ctx.fillStyle = "#00e5ff";
+        ctx.fillStyle = "#B8915A";
         ctx.arc(p2.x, p2.y, 2.2, 0, Math.PI * 2);
         ctx.fill();
       });
