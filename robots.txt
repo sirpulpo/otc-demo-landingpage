@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.otc-logistics.com/sitemap.xml
+Sitemap: https://sirpulpo.github.io/otc-demo-landingpage/sitemap.xml
