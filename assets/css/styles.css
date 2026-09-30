@@ -231,7 +231,7 @@ section .eyebrow::before{
   margin-bottom: 18px; line-height:1.6;
 }
 .hero-copy .eyebrow::before{ width:36px; }
-.hero-copy h1{ margin-bottom: .45em; }
+.hero-copy h1{ margin-bottom: .45em; text-wrap: balance; font-size: clamp(2.1rem, 3.6vw, 2.9rem); letter-spacing: -0.02em; }
 .hero-copy h1 .accent{
   background: linear-gradient(90deg, var(--cyan), var(--blue) 60%, var(--cyan));
   background-size: 200% auto;
