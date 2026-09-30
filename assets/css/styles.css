@@ -164,9 +164,9 @@ section .eyebrow::before{
 .brand .brand-name{ display:block; font-family: var(--font-brand); font-weight:700; font-size:1.5rem; line-height:1; letter-spacing:.01em; color: var(--ink); }
 .brand .brand-tag{ display:block; font-family: var(--font-body); font-weight:600; font-size:.56rem; letter-spacing:.26em; text-transform:uppercase; color: var(--cyan); margin-top:4px; padding-top:4px; border-top:1px solid var(--panel-border); }
 
-.nav-primary{ display:flex; align-items:center; gap: 30px; }
+.nav-primary{ display:flex; align-items:center; gap: 26px; }
 .nav-primary a{
-  font-size: .92rem; color: var(--ink-dim); position: relative; padding: 6px 0;
+  font-size: .92rem; color: var(--ink-dim); position: relative; padding: 6px 0; white-space: nowrap;
   transition: color var(--dur-fast) var(--ease);
 }
 .nav-primary a:hover, .nav-primary a:focus-visible{ color: var(--ink); }
@@ -176,10 +176,11 @@ section .eyebrow::before{
 }
 .nav-primary a:hover::after, .nav-primary a:focus-visible::after{ width:100%; }
 
-.header-actions{ display:flex; align-items:center; gap: 18px; flex-shrink:0; }
-.lang-switch{ display:flex; align-items:center; gap: 4px; border:1px solid var(--panel-border); border-radius: var(--radius-pill); padding: 4px; }
+.header-actions{ display:flex; align-items:center; gap: 14px; flex-shrink:0; }
+.lang-switch{ display:flex; align-items:center; gap: 2px; border:1px solid rgba(255,255,255,.08); border-radius: var(--radius-pill); padding: 3px; opacity:.85; transition: opacity var(--dur-fast) var(--ease); }
+.lang-switch:hover{ opacity:1; }
 .lang-switch a{
-  font-family: var(--font-display); font-size:.76rem; font-weight:600; padding: 5px 10px; border-radius: var(--radius-pill);
+  font-family: var(--font-display); font-size:.7rem; font-weight:600; padding: 4px 8px; border-radius: var(--radius-pill);
   color: var(--ink-faint); transition: all var(--dur-fast) var(--ease);
 }
 .lang-switch a[aria-current="true"]{ background: var(--cyan-soft); color: var(--cyan); }
@@ -531,8 +532,7 @@ section .eyebrow::before{
   .nav-primary.is-open{ transform: translateX(0); }
   .nav-primary a{ font-size: 1.2rem; }
   .nav-toggle{ display:flex; }
-  .header-actions .btn-primary{ display:none; }
-  .nav-primary .mobile-cta{ display:block; margin-top:10px; }
+  .header-actions .btn-primary{ padding: 9px 14px; font-size: .8rem; }
   section{ padding: 70px 0; }
 }
 @media (max-width: 640px){
