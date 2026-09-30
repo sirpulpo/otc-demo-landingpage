@@ -239,7 +239,7 @@ section .eyebrow::before{
   animation: sheen 6s linear infinite;
 }
 @keyframes sheen{ to{ background-position: -200% center; } }
-.hero-lede{ font-size: 1.08rem; max-width: 560px; }
+.hero-lede{ font-size: 1.08rem; max-width: 620px; color: rgba(255, 255, 255, 0.84); }
 .hero-rotator{
   display:inline-flex; align-items:center; gap:10px; font-family: var(--font-display);
   font-size:.85rem; letter-spacing:.05em; color: var(--ink); background: var(--panel);
