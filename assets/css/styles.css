@@ -226,7 +226,11 @@ section .eyebrow::before{
 .hero-grid{
   display:grid; grid-template-columns: 1.05fr .95fr; gap: 60px; align-items:center;
 }
-.hero-copy .eyebrow{ margin-bottom: 18px; }
+.hero-copy .eyebrow{
+  display:flex; flex-direction:column; align-items:flex-start; gap:10px;
+  margin-bottom: 18px; line-height:1.6;
+}
+.hero-copy .eyebrow::before{ width:36px; }
 .hero-copy h1{ margin-bottom: .45em; }
 .hero-copy h1 .accent{
   background: linear-gradient(90deg, var(--cyan), var(--blue) 60%, var(--cyan));
