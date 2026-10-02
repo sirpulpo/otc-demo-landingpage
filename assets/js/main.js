@@ -188,7 +188,6 @@
     var land = [];            // unit vectors of land dots
     var px, py, pz;           // per-frame projected land dots
     var hubs = [];
-    var arcs = [];
     var rotation = 1.4;       // start facing the Americas (center lon = -rotation)
     var running = true;
     var looping = false;
@@ -252,6 +251,96 @@
       [35.7, 139.7], [-33.9, 151.2], [6.5, 3.4], [30.0, 31.2]
     ];
 
+    // Real ports / airports [lat, lon] for the highlighted route
+    var ROUTE_SITES = [
+      [19.05, -104.32], [19.2, -96.13], [19.44, -99.07], [33.75, -118.22],
+      [40.64, -73.78], [-23.98, -46.3], [51.95, 4.14], [53.54, 9.97],
+      [31.23, 121.47], [1.26, 103.82], [35.1, 129.04], [25.01, 55.06],
+      [36.13, -5.44], [-33.95, 151.18]
+    ];
+    var routes = [];
+    var ROUTE_HOLD = 0;       // frames between comet arrival and start of fade
+    var ROUTE_FADE = 0.12;    // soft fade length at the erasing edge (arc fraction)
+
+    function newRoute(delay) {
+      var a, b, A, B, dot;
+      do {
+        a = Math.floor(Math.random() * ROUTE_SITES.length);
+        b = Math.floor(Math.random() * ROUTE_SITES.length);
+        A = vec(ROUTE_SITES[a][0] * DEG, ROUTE_SITES[a][1] * DEG);
+        B = vec(ROUTE_SITES[b][0] * DEG, ROUTE_SITES[b][1] * DEG);
+        dot = Math.max(-1, Math.min(1, A.x * B.x + A.y * B.y + A.z * B.z));
+      } while (a === b || Math.acos(dot) < 25 * DEG);
+      return { A: A, B: B, omega: Math.acos(dot), life: -delay, enter: 90 + Math.random() * 60 };
+    }
+
+    function drawRoutes() {
+      var now = performance.now();
+      routes.forEach(function (rt, idx) {
+        var head = 1, tail = 0;
+        if (!reduceMotion) {
+          rt.life++;
+          if (rt.life < 0) return;
+          head = Math.min(1, rt.life / rt.enter);
+          tail = Math.max(0, (rt.life - rt.enter - ROUTE_HOLD) / rt.enter);
+          if (tail >= 1) { routes[idx] = newRoute(Math.random() * 60); return; }
+        }
+
+        function strokeRange(a, b) {
+          if (b <= a) return;
+          strokeFacing(function (t) { return arcPoint(rt, a + (b - a) * t); }, Math.max(2, Math.ceil(64 * (b - a))));
+        }
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(" + GOLD + ",0.85)";
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([4, 4]);
+        ctx.lineDashOffset = reduceMotion ? 0 : -now / 60;
+        // soft edge where the route is being erased (tail), then the solid body
+        var steps = tail > 0 ? 6 : 0, fadeEnd = Math.min(head, tail + ROUTE_FADE), i;
+        for (i = 0; i < steps; i++) {
+          ctx.globalAlpha = (i + 1) / (steps + 1);
+          strokeRange(tail + (fadeEnd - tail) * (i / steps), tail + (fadeEnd - tail) * ((i + 1) / steps));
+        }
+        ctx.globalAlpha = 1;
+        strokeRange(steps ? fadeEnd : tail, head);
+        ctx.setLineDash([]);
+
+        // comet head dot
+        if (head < 1) {
+          var hp = arcPoint(rt, head);
+          if (hp.z > 0) {
+            ctx.fillStyle = "rgba(" + GOLD + ",0.25)";
+            ctx.beginPath(); ctx.arc(hp.x, hp.y, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#B8915A";
+            ctx.beginPath(); ctx.arc(hp.x, hp.y, 2.6, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+
+        [rt.A, rt.B].forEach(function (v, n) {
+          var a = n === 0 ? 1 - Math.min(1, tail / 0.15)
+                          : (head < 1 ? 0 : 1 - Math.min(1, Math.max(0, (tail - 0.85) / 0.15)));
+          if (a <= 0) return;
+          var p = project(v, 1);
+          if (p.z <= 0.05) return;
+          ctx.globalAlpha = a;
+          if (!reduceMotion) {
+            var k = (now % 1800) / 1800;
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(" + GOLD + "," + (0.6 * (1 - k)) + ")";
+            ctx.lineWidth = 1.2;
+            ctx.arc(p.x, p.y, 4 + 6 * k, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.beginPath();
+          ctx.fillStyle = "#B8915A";
+          ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.restore();
+      });
+    }
+
     function resize() {
       var rect = canvas.getBoundingClientRect();
       w = rect.width; h = rect.height;
@@ -279,16 +368,6 @@
       pz = new Float32Array(land.length);
 
       hubs = HUB_COORDS.map(function (c) { return vec(c[0] * DEG, c[1] * DEG); });
-      arcs = [];
-      for (var k = 0; k < 6; k++) arcs.push(newArc(Math.random()));
-    }
-
-    function newArc(t) {
-      var a = Math.floor(Math.random() * hubs.length), b;
-      do { b = Math.floor(Math.random() * hubs.length); } while (b === a);
-      var A = hubs[a], B = hubs[b];
-      var dot = Math.max(-1, Math.min(1, A.x * B.x + A.y * B.y + A.z * B.z));
-      return { A: A, B: B, omega: Math.acos(dot), t: t, speed: 0.003 + Math.random() * 0.002 };
     }
 
     // Spin around Y, tilt around X, scale to screen
@@ -393,30 +472,7 @@
         ctx.beginPath(); ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2); ctx.fill();
       });
 
-      // routes with fading tail
-      arcs.forEach(function (arc, idx) {
-        arc.t += arc.speed;
-        if (arc.t > 1.25) { arcs[idx] = arc = newArc(0); }
-        var head = Math.min(arc.t, 1), tail = Math.max(0, arc.t - 0.3), seg = 14, prev = null;
-        for (var j = 0; j <= seg; j++) {
-          var p = arcPoint(arc, tail + (head - tail) * (j / seg));
-          if (prev && p.z > 0 && prev.z > 0) {
-            ctx.beginPath();
-            ctx.strokeStyle = "rgba(" + GOLD + "," + (0.1 + 0.6 * (j / seg)) + ")";
-            ctx.lineWidth = 1.4;
-            ctx.moveTo(prev.x, prev.y);
-            ctx.lineTo(p.x, p.y);
-            ctx.stroke();
-          }
-          prev = p;
-        }
-        if (arc.t <= 1 && prev && prev.z > 0) {
-          ctx.beginPath();
-          ctx.fillStyle = "#B8915A";
-          ctx.arc(prev.x, prev.y, 2.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
+      drawRoutes();
 
       if (!reduceMotion) rotation += 0.0022;
     }
@@ -434,6 +490,7 @@
     }
 
     resize();
+    for (var rk = 0; rk < 3; rk++) routes.push(newRoute(reduceMotion ? 0 : rk * 90));
     window.addEventListener("resize", resize);
 
     if ("IntersectionObserver" in window) {
