@@ -193,9 +193,11 @@
     var looping = false;
 
     /* OTC logo as an orbiting "satellite" that tracks the routes */
-    var ORBIT_SCALE = 1.25, ORBIT_INC = 0.38, ORBIT_ROLL = -0.35;
-    var satAngle = 0.7;
-    var sat = { x: 0, y: 0, z: 1 };   // per-frame screen position + depth (z>0 = in front of globe)
+    // x/y/z: per-frame screen position + depth (z>0 = in front of globe)
+    var sats = [
+      { scale: 1.25, inc: 0.38, roll: -0.35, angle: 0.7, speed: 0.0055, x: 0, y: 0, z: 1 },
+      { scale: 1.4, inc: -0.55, roll: 0.6, angle: 3.8, speed: -0.0042, x: 0, y: 0, z: 1 }
+    ];
     var satImg = new Image();
     var satSrc = canvas.getAttribute("data-globe-logo");
     if (satSrc) satImg.src = satSrc;
@@ -428,34 +430,34 @@
     }
 
     // Satellite position on a tilted orbit (view space: it does not spin with the globe)
-    function updateSatellite() {
-      var ca = Math.cos(satAngle), sa = Math.sin(satAngle);
-      var ox = ca, oy = sa * Math.sin(ORBIT_INC), oz = sa * Math.cos(ORBIT_INC);
-      var cr = Math.cos(ORBIT_ROLL), sr = Math.sin(ORBIT_ROLL);
+    function updateSatellite(sat) {
+      var ca = Math.cos(sat.angle), sa = Math.sin(sat.angle);
+      var ox = ca, oy = sa * Math.sin(sat.inc), oz = sa * Math.cos(sat.inc);
+      var cr = Math.cos(sat.roll), sr = Math.sin(sat.roll);
       var vx = ox * cr - oy * sr, vy = ox * sr + oy * cr;
-      sat.x = cx + vx * r * ORBIT_SCALE;
-      sat.y = cy - vy * r * ORBIT_SCALE;
+      sat.x = cx + vx * r * sat.scale;
+      sat.y = cy - vy * r * sat.scale;
       sat.z = oz;
     }
 
-    function drawOrbit(front) {
+    function drawOrbit(sat, front) {
       ctx.save();
       ctx.strokeStyle = "rgba(" + GOLD + "," + (front ? 0.22 : 0.1) + ")";
       ctx.lineWidth = 1;
       ctx.setLineDash([2, 5]);
-      var cr = Math.cos(ORBIT_ROLL), sr = Math.sin(ORBIT_ROLL), pen = false, i, n = 90;
+      var cr = Math.cos(sat.roll), sr = Math.sin(sat.roll), pen = false, i, n = 90;
       ctx.beginPath();
       for (i = 0; i <= n; i++) {
-        var a = (i / n) * Math.PI * 2, ox = Math.cos(a), oy = Math.sin(a) * Math.sin(ORBIT_INC), oz = Math.sin(a) * Math.cos(ORBIT_INC);
+        var a = (i / n) * Math.PI * 2, ox = Math.cos(a), oy = Math.sin(a) * Math.sin(sat.inc), oz = Math.sin(a) * Math.cos(sat.inc);
         if ((oz >= 0) !== front) { pen = false; continue; }
-        var X = cx + (ox * cr - oy * sr) * r * ORBIT_SCALE, Y = cy - (ox * sr + oy * cr) * r * ORBIT_SCALE;
+        var X = cx + (ox * cr - oy * sr) * r * sat.scale, Y = cy - (ox * sr + oy * cr) * r * sat.scale;
         if (pen) ctx.lineTo(X, Y); else { ctx.moveTo(X, Y); pen = true; }
       }
       ctx.stroke();
       ctx.restore();
     }
 
-    function drawSatelliteBody(front) {
+    function drawSatelliteBody(sat, front) {
       var size = Math.max(18, r * 0.15) * (front ? 1 : 0.8);
       var x = sat.x - size / 2, y = sat.y - size / 2, rad = size * 0.22;
       ctx.save();
@@ -481,18 +483,20 @@
       ctx.restore();
     }
 
-    // Tracking links from the satellite to the nearest active comet heads (max MAX_LINKS)
+    // Tracking links: each active comet head is tracked by the nearest visible satellite
     function drawSatelliteLinks() {
-      if (sat.z <= 0.1) return;
       var targets = [];
       routes.forEach(function (rt) {
         if (!rt.hp) return;
-        var ddx = rt.hp.x - sat.x, ddy = rt.hp.y - sat.y;
-        targets.push({ p: rt.hp, d: ddx * ddx + ddy * ddy });
+        var best = null, bd = Infinity;
+        sats.forEach(function (s) {
+          if (s.z <= 0.1) return;
+          var ddx = rt.hp.x - s.x, ddy = rt.hp.y - s.y, d = ddx * ddx + ddy * ddy;
+          if (d < bd) { bd = d; best = s; }
+        });
+        if (best) targets.push({ p: rt.hp, s: best });
       });
       if (!targets.length) return;
-      targets.sort(function (a, b) { return a.d - b.d; });
-      targets = targets.slice(0, MAX_LINKS);
 
       ctx.save();
       ctx.shadowColor = "rgba(" + GOLD + ",0.8)";
@@ -502,7 +506,7 @@
       ctx.setLineDash([5, 4]);
       ctx.lineDashOffset = reduceMotion ? 0 : -performance.now() / 30;
       targets.forEach(function (t) {
-        ctx.beginPath(); ctx.moveTo(sat.x, sat.y); ctx.lineTo(t.p.x, t.p.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(t.s.x, t.s.y); ctx.lineTo(t.p.x, t.p.y); ctx.stroke();
       });
       // target rings on the tracked comet heads
       ctx.setLineDash([]);
@@ -514,11 +518,13 @@
 
     function draw() {
       ctx.clearRect(0, 0, w, h);
-      updateSatellite();
+      sats.forEach(updateSatellite);
 
-      // satellite on the far side of the orbit: drawn first so the globe occludes it
-      drawOrbit(false);
-      if (sat.z < 0) drawSatelliteBody(false);
+      // satellites on the far side of the orbit: drawn first so the globe occludes them
+      sats.forEach(function (s) {
+        drawOrbit(s, false);
+        if (s.z < 0) drawSatelliteBody(s, false);
+      });
 
       // atmosphere halo
       var halo = ctx.createRadialGradient(cx, cy, r * 0.98, cx, cy, r * 1.22);
@@ -571,12 +577,15 @@
         ctx.beginPath(); ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2); ctx.fill();
       });
 
-      drawOrbit(true);
+      sats.forEach(function (s) { drawOrbit(s, true); });
       drawRoutes();
       drawSatelliteLinks();
-      if (sat.z >= 0) drawSatelliteBody(true);
+      sats.forEach(function (s) { if (s.z >= 0) drawSatelliteBody(s, true); });
 
-      if (!reduceMotion) { rotation += 0.0022; satAngle += 0.0055; }
+      if (!reduceMotion) {
+        rotation += 0.0022;
+        sats.forEach(function (s) { s.angle += s.speed; });
+      }
     }
 
     function loop() {
