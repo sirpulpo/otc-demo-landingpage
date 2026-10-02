@@ -192,6 +192,14 @@
     var running = true;
     var looping = false;
 
+    /* OTC logo as an orbiting "satellite" that tracks the routes */
+    var ORBIT_SCALE = 1.25, ORBIT_INC = 0.38, ORBIT_ROLL = -0.35;
+    var satAngle = 0.7;
+    var sat = { x: 0, y: 0, z: 1 };   // per-frame screen position + depth (z>0 = in front of globe)
+    var satImg = new Image();
+    var satSrc = canvas.getAttribute("data-globe-logo");
+    if (satSrc) satImg.src = satSrc;
+
     /* 144x72 land/sea mask (2.5 deg cells, row 0 = 90N, col 0 = 180W), 4 cells per hex digit */
     var LAND = [
       "000000000000000000000000000000000000", "000000000000000000000000000000000000",
@@ -278,6 +286,7 @@
       var now = performance.now();
       routes.forEach(function (rt, idx) {
         var head = 1, tail = 0;
+        rt.hp = null;
         if (!reduceMotion) {
           rt.life++;
           if (rt.life < 0) return;
@@ -310,6 +319,7 @@
         if (head < 1) {
           var hp = arcPoint(rt, head);
           if (hp.z > 0) {
+            rt.hp = hp;
             ctx.fillStyle = "rgba(" + GOLD + ",0.25)";
             ctx.beginPath(); ctx.arc(hp.x, hp.y, 5, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = "#B8915A";
@@ -418,8 +428,88 @@
       }
     }
 
+    // Satellite position on a tilted orbit (view space: it does not spin with the globe)
+    function updateSatellite() {
+      var ca = Math.cos(satAngle), sa = Math.sin(satAngle);
+      var ox = ca, oy = sa * Math.sin(ORBIT_INC), oz = sa * Math.cos(ORBIT_INC);
+      var cr = Math.cos(ORBIT_ROLL), sr = Math.sin(ORBIT_ROLL);
+      var vx = ox * cr - oy * sr, vy = ox * sr + oy * cr;
+      sat.x = cx + vx * r * ORBIT_SCALE;
+      sat.y = cy - vy * r * ORBIT_SCALE;
+      sat.z = oz;
+    }
+
+    function drawOrbit(front) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(" + GOLD + "," + (front ? 0.22 : 0.1) + ")";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 5]);
+      var cr = Math.cos(ORBIT_ROLL), sr = Math.sin(ORBIT_ROLL), pen = false, i, n = 90;
+      ctx.beginPath();
+      for (i = 0; i <= n; i++) {
+        var a = (i / n) * Math.PI * 2, ox = Math.cos(a), oy = Math.sin(a) * Math.sin(ORBIT_INC), oz = Math.sin(a) * Math.cos(ORBIT_INC);
+        if ((oz >= 0) !== front) { pen = false; continue; }
+        var X = cx + (ox * cr - oy * sr) * r * ORBIT_SCALE, Y = cy - (ox * sr + oy * cr) * r * ORBIT_SCALE;
+        if (pen) ctx.lineTo(X, Y); else { ctx.moveTo(X, Y); pen = true; }
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawSatelliteBody(front) {
+      var size = Math.max(18, r * 0.15) * (front ? 1 : 0.8);
+      var x = sat.x - size / 2, y = sat.y - size / 2, rad = size * 0.22;
+      ctx.save();
+      ctx.globalAlpha = front ? 1 : 0.35;
+      var glow = ctx.createRadialGradient(sat.x, sat.y, size * 0.2, sat.x, sat.y, size * 1.1);
+      glow.addColorStop(0, "rgba(" + GOLD + ",0.35)");
+      glow.addColorStop(1, "rgba(" + GOLD + ",0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(sat.x, sat.y, size * 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + rad, y);
+      ctx.arcTo(x + size, y, x + size, y + size, rad);
+      ctx.arcTo(x + size, y + size, x, y + size, rad);
+      ctx.arcTo(x, y + size, x, y, rad);
+      ctx.arcTo(x, y, x + size, y, rad);
+      ctx.closePath();
+      ctx.fillStyle = "#0F1C30";
+      ctx.fill();
+      if (satImg.complete && satImg.naturalWidth) ctx.drawImage(satImg, x, y, size, size);
+      ctx.strokeStyle = "rgba(" + GOLD + ",0.9)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Tracking link from the satellite to the nearest active comet head
+    function drawSatelliteLinks() {
+      if (sat.z <= 0.1) return;
+      ctx.save();
+      // telemetry link to the closest active comet head
+      var best = null, bd = Infinity;
+      routes.forEach(function (rt) {
+        if (!rt.hp) return;
+        var ddx = rt.hp.x - sat.x, ddy = rt.hp.y - sat.y, dd = ddx * ddx + ddy * ddy;
+        if (dd < bd) { bd = dd; best = rt.hp; }
+      });
+      if (best) {
+        ctx.setLineDash([3, 4]);
+        ctx.lineDashOffset = reduceMotion ? 0 : -performance.now() / 40;
+        ctx.strokeStyle = "rgba(" + GOLD + ",0.55)";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sat.x, sat.y); ctx.lineTo(best.x, best.y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     function draw() {
       ctx.clearRect(0, 0, w, h);
+      updateSatellite();
+
+      // satellite on the far side of the orbit: drawn first so the globe occludes it
+      drawOrbit(false);
+      if (sat.z < 0) drawSatelliteBody(false);
 
       // atmosphere halo
       var halo = ctx.createRadialGradient(cx, cy, r * 0.98, cx, cy, r * 1.22);
@@ -472,9 +562,12 @@
         ctx.beginPath(); ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2); ctx.fill();
       });
 
+      drawOrbit(true);
       drawRoutes();
+      drawSatelliteLinks();
+      if (sat.z >= 0) drawSatelliteBody(true);
 
-      if (!reduceMotion) rotation += 0.0022;
+      if (!reduceMotion) { rotation += 0.0022; satAngle += 0.0055; }
     }
 
     function loop() {
@@ -505,7 +598,7 @@
       start();
     }
 
-    if (reduceMotion) { draw(); running = false; }
+    if (reduceMotion) { draw(); running = false; satImg.onload = draw; }
   }
 
   /* ---------- Quote form -> WhatsApp / mailto ---------- */
