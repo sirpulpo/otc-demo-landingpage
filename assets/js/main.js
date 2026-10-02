@@ -196,7 +196,8 @@
     // x/y/z: per-frame screen position + depth (z>0 = in front of globe)
     var sats = [
       { scale: 1.25, inc: 0.38, roll: -0.35, angle: 0.7, speed: 0.0055, x: 0, y: 0, z: 1 },
-      { scale: 1.4, inc: -0.55, roll: 0.6, angle: 3.8, speed: -0.0042, x: 0, y: 0, z: 1 }
+      { scale: 1.4, inc: -0.55, roll: 0.6, angle: 2.8, speed: -0.0042, x: 0, y: 0, z: 1 },
+      { scale: 1.15, inc: 0.95, roll: 1.4, angle: 4.9, speed: 0.0033, x: 0, y: 0, z: 1 }
     ];
     var satImg = new Image();
     var satSrc = canvas.getAttribute("data-globe-logo");
@@ -430,14 +431,38 @@
     }
 
     // Satellite position on a tilted orbit (view space: it does not spin with the globe)
-    function updateSatellite(sat) {
-      var ca = Math.cos(sat.angle), sa = Math.sin(sat.angle);
+    function orbitPos(sat, angle) {
+      var ca = Math.cos(angle), sa = Math.sin(angle);
       var ox = ca, oy = sa * Math.sin(sat.inc), oz = sa * Math.cos(sat.inc);
       var cr = Math.cos(sat.roll), sr = Math.sin(sat.roll);
       var vx = ox * cr - oy * sr, vy = ox * sr + oy * cr;
-      sat.x = cx + vx * r * sat.scale;
-      sat.y = cy - vy * r * sat.scale;
-      sat.z = oz;
+      return { x: cx + vx * r * sat.scale, y: cy - vy * r * sat.scale, z: oz };
+    }
+
+    function updateSatellite(sat) {
+      var p = orbitPos(sat, sat.angle);
+      sat.x = p.x; sat.y = p.y; sat.z = p.z;
+    }
+
+    // Keep satellites apart: nudge a close pair along their own orbits, away from each other
+    var MIN_SEP_K = 0.6, SEP_PUSH = 0.02;
+    function separateSatellites() {
+      var minSep = r * MIN_SEP_K, i, j;
+      for (i = 0; i < sats.length; i++) {
+        for (j = i + 1; j < sats.length; j++) {
+          var a = sats[i], b = sats[j];
+          var d = Math.hypot(a.x - b.x, a.y - b.y);
+          if (d >= minSep) continue;
+          var push = SEP_PUSH * (1 - d / minSep);
+          [[a, b], [b, a]].forEach(function (pair) {
+            var s = pair[0], o = pair[1];
+            var fwd = orbitPos(s, s.angle + 0.01), back = orbitPos(s, s.angle - 0.01);
+            var df = Math.hypot(fwd.x - o.x, fwd.y - o.y), db = Math.hypot(back.x - o.x, back.y - o.y);
+            s.angle += df >= db ? push : -push;
+            updateSatellite(s);
+          });
+        }
+      }
     }
 
     function drawOrbit(sat, front) {
@@ -519,6 +544,7 @@
     function draw() {
       ctx.clearRect(0, 0, w, h);
       sats.forEach(updateSatellite);
+      if (!reduceMotion) separateSatellites();
 
       // satellites on the far side of the orbit: drawn first so the globe occludes them
       sats.forEach(function (s) {
