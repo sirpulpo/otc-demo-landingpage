@@ -268,7 +268,8 @@
     ];
     var routes = [];
     var ROUTE_HOLD = 0;       // frames between comet arrival and start of fade
-    var ROUTE_FADE = 0.12;    // soft fade length at the erasing edge (arc fraction)
+    var MAX_LINKS = 4;        // max simultaneous telemetry links / comets
+    var ROUTE_FADE = 0.12;   // soft fade length at the erasing edge (arc fraction)
 
     function newRoute(delay) {
       var a, b, A, B, dot;
@@ -303,8 +304,7 @@
         ctx.save();
         ctx.strokeStyle = "rgba(" + GOLD + ",0.85)";
         ctx.lineWidth = 1.6;
-        ctx.setLineDash([4, 4]);
-        ctx.lineDashOffset = reduceMotion ? 0 : -now / 60;
+        ctx.lineCap = "round";
         // soft edge where the route is being erased (tail), then the solid body
         var steps = tail > 0 ? 6 : 0, fadeEnd = Math.min(head, tail + ROUTE_FADE), i;
         for (i = 0; i < steps; i++) {
@@ -313,7 +313,6 @@
         }
         ctx.globalAlpha = 1;
         strokeRange(steps ? fadeEnd : tail, head);
-        ctx.setLineDash([]);
 
         // comet head dot
         if (head < 1) {
@@ -482,30 +481,34 @@
       ctx.restore();
     }
 
-    // Tracking link from the satellite to the nearest active comet head
+    // Tracking links from the satellite to the nearest active comet heads (max MAX_LINKS)
     function drawSatelliteLinks() {
       if (sat.z <= 0.1) return;
-      ctx.save();
-      // telemetry link to the closest active comet head
-      var best = null, bd = Infinity;
+      var targets = [];
       routes.forEach(function (rt) {
         if (!rt.hp) return;
-        var ddx = rt.hp.x - sat.x, ddy = rt.hp.y - sat.y, dd = ddx * ddx + ddy * ddy;
-        if (dd < bd) { bd = dd; best = rt.hp; }
+        var ddx = rt.hp.x - sat.x, ddy = rt.hp.y - sat.y;
+        targets.push({ p: rt.hp, d: ddx * ddx + ddy * ddy });
       });
-      if (best) {
-        ctx.shadowColor = "rgba(" + GOLD + ",0.8)";
-        ctx.shadowBlur = 8;
-        ctx.setLineDash([5, 4]);
-        ctx.lineDashOffset = reduceMotion ? 0 : -performance.now() / 30;
-        ctx.strokeStyle = "rgba(" + GOLD + ",0.8)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(sat.x, sat.y); ctx.lineTo(best.x, best.y); ctx.stroke();
-        // target ring on the tracked comet head
-        ctx.setLineDash([]);
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(best.x, best.y, 8, 0, Math.PI * 2); ctx.stroke();
-      }
+      if (!targets.length) return;
+      targets.sort(function (a, b) { return a.d - b.d; });
+      targets = targets.slice(0, MAX_LINKS);
+
+      ctx.save();
+      ctx.shadowColor = "rgba(" + GOLD + ",0.8)";
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = "rgba(" + GOLD + ",0.8)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.lineDashOffset = reduceMotion ? 0 : -performance.now() / 30;
+      targets.forEach(function (t) {
+        ctx.beginPath(); ctx.moveTo(sat.x, sat.y); ctx.lineTo(t.p.x, t.p.y); ctx.stroke();
+      });
+      // target rings on the tracked comet heads
+      ctx.setLineDash([]);
+      targets.forEach(function (t) {
+        ctx.beginPath(); ctx.arc(t.p.x, t.p.y, 8, 0, Math.PI * 2); ctx.stroke();
+      });
       ctx.restore();
     }
 
@@ -589,7 +592,7 @@
     }
 
     resize();
-    for (var rk = 0; rk < 3; rk++) routes.push(newRoute(reduceMotion ? 0 : rk * 90));
+    for (var rk = 0; rk < MAX_LINKS; rk++) routes.push(newRoute(reduceMotion ? 0 : rk * 90));
     window.addEventListener("resize", resize);
 
     if ("IntersectionObserver" in window) {
