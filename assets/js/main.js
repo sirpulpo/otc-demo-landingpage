@@ -494,11 +494,17 @@
         if (dd < bd) { bd = dd; best = rt.hp; }
       });
       if (best) {
-        ctx.setLineDash([3, 4]);
-        ctx.lineDashOffset = reduceMotion ? 0 : -performance.now() / 40;
-        ctx.strokeStyle = "rgba(" + GOLD + ",0.55)";
-        ctx.lineWidth = 1;
+        ctx.shadowColor = "rgba(" + GOLD + ",0.8)";
+        ctx.shadowBlur = 8;
+        ctx.setLineDash([5, 4]);
+        ctx.lineDashOffset = reduceMotion ? 0 : -performance.now() / 30;
+        ctx.strokeStyle = "rgba(" + GOLD + ",0.8)";
+        ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(sat.x, sat.y); ctx.lineTo(best.x, best.y); ctx.stroke();
+        // target ring on the tracked comet head
+        ctx.setLineDash([]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(best.x, best.y, 8, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.restore();
     }
