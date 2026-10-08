@@ -302,7 +302,7 @@ section .eyebrow::before{
 .cert-list svg{ width:18px; height:18px; color: var(--cyan); flex-shrink:0; }
 
 .marquee{ overflow:hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.marquee-track{ display:flex; gap: 60px; width: max-content; animation: marquee 32s linear infinite; }
+.marquee-track{ display:flex; gap: 60px; width: max-content; animation: marquee 100s linear infinite; }
 .marquee-track span{ font-family: var(--font-display); font-size:1rem; color: var(--ink-faint); white-space:nowrap; display:flex; align-items:center; gap:10px; }
 .marquee-track span::before{ content:""; width:5px; height:5px; border-radius:50%; background: var(--cyan); }
 @keyframes marquee{ to{ transform: translateX(-50%); } }
