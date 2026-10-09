@@ -309,7 +309,7 @@ section .eyebrow::before{
 @media (prefers-reduced-motion: reduce){ .marquee-track{ animation: none; } }
 
 /* ---------- Cards / grid ---------- */
-.services-grid{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.services-grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
 .card{
   position:relative; padding: 28px 24px; border-radius: var(--radius-lg);
   background: var(--panel); border:1px solid var(--panel-border);
@@ -340,6 +340,9 @@ section .eyebrow::before{
 .card-icon svg{ width:24px; height:24px; }
 .card h3{ margin-bottom: .4em; }
 .card p{ font-size: .92rem; margin-bottom: 0; }
+.v-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:16px; padding:0; list-style:none; position:relative; }
+.v-chip{ padding:4px 10px; border-radius: var(--radius-pill); font-family: var(--font-display); font-size:.72rem; background: var(--cyan-soft); color: var(--cyan); border:1px solid var(--panel-border); }
+.card-badge{ position:absolute; top:16px; right:16px; z-index:1; padding:4px 10px; border-radius: 4px; font-family: var(--font-display); font-size:.68rem; letter-spacing:.08em; background: var(--cyan-soft); color: var(--cyan); border:1px solid var(--panel-border); }
 
 .reveal{ opacity:0; transform: translateY(28px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
 .reveal.is-visible{ opacity:1; transform: translateY(0); }
